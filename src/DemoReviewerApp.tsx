@@ -776,7 +776,7 @@ export default function DemoReviewerApp() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+        <div className="mx-auto w-full max-w-[min(1800px,100vw-2rem)] px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 grid place-items-center rounded-xl bg-primary/10">
               <span className="font-bold">AI</span>
@@ -818,7 +818,7 @@ export default function DemoReviewerApp() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+      <main className="mx-auto w-full max-w-[min(1800px,100vw-2rem)] px-6 py-6 grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Sidebar */}
         <aside className="md:col-span-4 lg:col-span-3">
           <Card className="sticky top-[84px]">
