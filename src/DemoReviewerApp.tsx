@@ -566,20 +566,20 @@ function SectionSidebar({
             <div className="flex items-center gap-2">
               {s.accepted ? (
                 <span className="inline-flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> Text
+                  <CheckCircle2 className="h-4 w-4" /> 
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <Edit3 className="h-4 w-4" /> Text
+                  <Edit3 className="h-4 w-4" /> 
                 </span>
               )}
               {s.hasRecs && (s.acceptRecs ? (
                 <span className="inline-flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> Recs
+                  <CheckCircle2 className="h-4 w-4" /> 
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <ListChecks className="h-4 w-4" /> Recs
+                  <ListChecks className="h-4 w-4" /> 
                 </span>
               ))}
             </div>
