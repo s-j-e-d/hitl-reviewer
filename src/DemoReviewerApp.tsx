@@ -660,7 +660,7 @@ export default function DemoReviewerApp() {
   const [sections, setSections] = useState<Section[]>(initialSections);
   const [activeId, setActiveId] = useState<string>(initialSections[0].id);
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
-  const [role, setRole] = useState<"reviewer" | "user">("reviewer");
+  const [role, setRole] = useState<"reviewer" | "user">("user");
 
   const active = useMemo(() => {
     const found = sections.find((s) => s.id === activeId);
@@ -793,8 +793,12 @@ export default function DemoReviewerApp() {
             <Badge variant="outline" className="mr-2">{reviewedPct}% reviewed</Badge>
             {/* Role switch */}
             <div className="flex items-center gap-1 border rounded-xl p-1">
-              <Button size="sm" variant={role === "reviewer" ? "default" : "ghost"} onClick={() => setRole("reviewer")}>Reviewer</Button>
-              <Button size="sm" variant={role === "user" ? "default" : "ghost"} onClick={() => setRole("user")}>User</Button>
+              <Button size="sm" variant={role === "reviewer" ? "default" : "ghost"} onClick={() => setRole("reviewer")}>
+                Reviewer
+              </Button>
+              <Button size="sm" variant={role === "user" ? "default" : "ghost"} onClick={() => setRole("user")}>
+                User
+              </Button>
             </div>
             {/* Tools only for reviewers */}
             {role === "reviewer" && (
@@ -837,19 +841,17 @@ export default function DemoReviewerApp() {
               </div>
               <div className="flex items-center gap-3">
                 <Badge variant="secondary">Questionnaire: {questionnaireId || "—"}</Badge>
+                <Separator orientation="vertical" className="h-6" />
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Rating</Label>
+                  <StarRating value={active.rating} onChange={(v) => updateSection(active.id, { rating: v })} />
+                </div>
                 {role === "reviewer" && (
                   <>
                     <Separator orientation="vertical" className="h-6" />
                     <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Rating</Label>
-                      <StarRating value={active.rating} onChange={(v) => updateSection(active.id, { rating: v })} />
-                    </div>
-                    <Separator orientation="vertical" className="h-6" />
-                    <div className="flex items-center gap-2">
                       <Checkbox id="accept" checked={active.accepted} onCheckedChange={(v) => updateSection(active.id, { accepted: !!v })} />
-                      <Label htmlFor="accept" className="text-sm">
-                        Adopt my narrative as final
-                      </Label>
+                      <Label htmlFor="accept" className="text-sm">Adopt my narrative as final</Label>
                     </div>
                   </>
                 )}
