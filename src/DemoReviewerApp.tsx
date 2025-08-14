@@ -1,3 +1,6 @@
+import type { Section, ContextRow, RatingsDims } from "./data/ua.demo.sections";
+import { initialSections } from "./data/ua.demo.sections";
+
 import { useMemo, useState } from "react";
 import {
   Star,
@@ -24,6 +27,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Label as RLabel,
 } from "recharts";
 
 // shadcn/ui components used by the app
@@ -39,185 +43,18 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 
 // ---------------------------------------------
-// Types
+// UI bits
 // ---------------------------------------------
-interface ContextRow {
-  survey: string;
-  site?: string;
-  code: string;
-  label: string;
-  value: string | number;
-}
-
-interface Section {
-  id: string;
-  title: string;
-  cluster: string;
-  aiText: string;
-  humanText: string;
-  rating: number;
-  accepted: boolean;
-  hasRecs: boolean;
-  aiRecs: string[];
-  humanRecs: string[];
-  acceptRecs: boolean;
-  narrativeFields: string[];
-  recFields: string[];
-  chart: "none" | "bar" | "pie";
-  chartData: any[];
-  contextRows: ContextRow[];
-}
-
-// ---------------------------------------------
-// Demo Data (multi-survey context + recs)
-// ---------------------------------------------
-const initialSections: Section[] = [
-  {
-    id: "overview",
-    title: "Context Overview",
-    cluster: "Multi-sector",
-    aiText:
-      "Based on 312 household interviews across 8 hromadas (May 2025), most respondents reported reduced access to services due to insecurity and rising prices. Displacement remains fluid; host communities are absorbing needs. Priority is safe water, basic health services, and cash for essential goods.",
-    humanText: "",
-    rating: 0,
-    accepted: false,
-    // Programming suggestions disabled for overview
-    hasRecs: false,
-    aiRecs: [],
-    humanRecs: [],
-    acceptRecs: false,
-    narrativeFields: ["loc_hromada", "sample_n", "dates"],
-    recFields: [],
-    chart: "none",
-    chartData: [],
-    // three deployments of the same questionnaire schema (site instances)
-    contextRows: [
-      { survey: "MSNA-2025", site: "Rivne", code: "loc_hromada", label: "Hromada", value: "Rivne-1" },
-      { survey: "MSNA-2025", site: "Rivne", code: "sample_n", label: "Households Surveyed", value: "312" },
-      { survey: "MSNA-2025", site: "Rivne", code: "dates", label: "Data Collection Window", value: "2025-05-12 → 2025-05-20" },
-      { survey: "MSNA-2025", site: "Kovel", code: "loc_hromada", label: "Hromada", value: "Kovel-2" },
-      { survey: "MSNA-2025", site: "Kovel", code: "sample_n", label: "Households Surveyed", value: "198" },
-      { survey: "MSNA-2025", site: "Kovel", code: "dates", label: "Data Collection Window", value: "2025-05-15 → 2025-05-22" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "loc_hromada", label: "Hromada", value: "Lutsk-3" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "sample_n", label: "Households Surveyed", value: "276" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "dates", label: "Data Collection Window", value: "2025-05-10 → 2025-05-18" },
-    ],
-  },
-  {
-    id: "wash",
-    title: "WASH Findings",
-    cluster: "WASH",
-    aiText:
-      "62% of households report access to improved water sources; however, 38% rely on trucking or surface water with inconsistent chlorination. Primary barriers are cost of water and distance to points. Priority actions: chlorination support, spare parts for pumps, and hygiene kit distribution targeting displaced households.",
-    humanText: "",
-    rating: 0,
-    accepted: false,
-    hasRecs: true,
-    aiRecs: [
-      "Support chlorination at communal water points and monitor residuals weekly.",
-      "Provide spare parts for borehole pumps in rural sites.",
-      "Targeted hygiene kits for newly displaced HHs.",
-    ],
-    humanRecs: [],
-    acceptRecs: false,
-    narrativeFields: ["w_source_main", "w_treat", "dist_to_point_km"],
-    recFields: ["w_source_main", "w_treat", "dist_to_point_km"],
-    chart: "bar",
-    chartData: [
-      { category: "Improved", value: 62 },
-      { category: "Unimproved", value: 22 },
-      { category: "Trucked", value: 16 },
-    ],
-    // three deployments (Rivne, Kovel, Lutsk) with the same schema
-    contextRows: [
-      { survey: "MSNA-2025", site: "Rivne", code: "w_source_main", label: "Main Water Source", value: "piped 41% | borehole 21%" },
-      { survey: "MSNA-2025", site: "Rivne", code: "w_treat", label: "Water Treatment", value: "boil 18% | chlorine 27%" },
-      { survey: "MSNA-2025", site: "Rivne", code: "dist_to_point_km", label: "Avg Distance to Point (km)", value: "1.3" },
-      { survey: "MSNA-2025", site: "Kovel", code: "w_source_main", label: "Main Water Source", value: "piped 36% | borehole 24%" },
-      { survey: "MSNA-2025", site: "Kovel", code: "w_treat", label: "Water Treatment", value: "boil 12% | chlorine 33%" },
-      { survey: "MSNA-2025", site: "Kovel", code: "dist_to_point_km", label: "Avg Distance to Point (km)", value: "1.8" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "w_source_main", label: "Main Water Source", value: "piped 48% | borehole 19%" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "w_treat", label: "Water Treatment", value: "boil 16% | chlorine 22%" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "dist_to_point_km", label: "Avg Distance to Point (km)", value: "1.1" },
-    ],
-  },
-  {
-    id: "health",
-    title: "Health Findings",
-    cluster: "Health",
-    aiText:
-      "70% of facilities are fully functional; 30% report stockouts of essential medicines (analgesics, antibiotics). Top barriers: user fees and transport. Priority actions: preposition chronic medications and deploy mobile clinics to areas beyond 10 km from facilities.",
-    humanText: "",
-    rating: 0,
-    accepted: false,
-    hasRecs: true,
-    aiRecs: [
-      "Preposition chronic meds (HTN, DM) to peripheral facilities.",
-      "Deploy mobile clinics to settlements >10 km from nearest facility.",
-      "Waive user fees temporarily for vulnerable groups.",
-    ],
-    humanRecs: [],
-    acceptRecs: false,
-    narrativeFields: ["func_level", "stockouts_30d", "dist_fac_km"],
-    recFields: ["func_level", "stockouts_30d", "dist_fac_km"],
-    chart: "pie",
-    chartData: [
-      { name: "Functional", value: 70 },
-      { name: "Limited", value: 20 },
-      { name: "Closed", value: 10 },
-    ],
-    contextRows: [
-      { survey: "MSNA-2025", site: "Rivne", code: "func_level", label: "Facility Functionality", value: "functional 70% | limited 20% | closed 10%" },
-      { survey: "MSNA-2025", site: "Rivne", code: "stockouts_30d", label: "Stockouts (30 days)", value: "34% facilities" },
-      { survey: "MSNA-2025", site: "Rivne", code: "dist_fac_km", label: "Avg Distance to Facility (km)", value: "8.6" },
-      { survey: "MSNA-2025", site: "Kovel", code: "func_level", label: "Facility Functionality", value: "functional 66% | limited 24% | closed 10%" },
-      { survey: "MSNA-2025", site: "Kovel", code: "stockouts_30d", label: "Stockouts (30 days)", value: "28% facilities" },
-      { survey: "MSNA-2025", site: "Kovel", code: "dist_fac_km", label: "Avg Distance to Facility (km)", value: "11.2" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "func_level", label: "Facility Functionality", value: "functional 73% | limited 18% | closed 9%" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "stockouts_30d", label: "Stockouts (30 days)", value: "31% facilities" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "dist_fac_km", label: "Avg Distance to Facility (km)", value: "6.9" },
-    ],
-  },
-  {
-    id: "protection",
-    title: "Protection Findings",
-    cluster: "Protection",
-    aiText:
-      "Households report safety concerns at water points and markets, especially after dark. Documentation loss among displaced households (21%) limits access to services. Priority actions: information points on civil documentation, lighting near water points, and PSS group sessions for caregivers and adolescents.",
-    humanText: "",
-    rating: 0,
-    accepted: false,
-    hasRecs: true,
-    aiRecs: [
-      "Install solar lighting at water points and market approaches.",
-      "Run civil documentation help desks with legal aid partners.",
-      "Facilitate PSS group sessions for caregivers and adolescents.",
-    ],
-    humanRecs: [],
-    acceptRecs: false,
-    narrativeFields: ["safety_day_night", "lost_docs", "hotspots"],
-    recFields: ["safety_day_night", "lost_docs", "hotspots"],
-    chart: "none",
-    chartData: [],
-    contextRows: [
-      { survey: "MSNA-2025", site: "Rivne", code: "safety_day_night", label: "Perceived Safety (day/night)", value: "78% / 44%" },
-      { survey: "MSNA-2025", site: "Rivne", code: "lost_docs", label: "Missing Documentation", value: "21% of HH" },
-      { survey: "MSNA-2025", site: "Rivne", code: "hotspots", label: "Hotspots", value: "markets, water points" },
-      { survey: "MSNA-2025", site: "Kovel", code: "safety_day_night", label: "Perceived Safety (day/night)", value: "81% / 47%" },
-      { survey: "MSNA-2025", site: "Kovel", code: "lost_docs", label: "Missing Documentation", value: "18% of HH" },
-      { survey: "MSNA-2025", site: "Kovel", code: "hotspots", label: "Hotspots", value: "markets, water points" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "safety_day_night", label: "Perceived Safety (day/night)", value: "76% / 51%" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "lost_docs", label: "Missing Documentation", value: "22% of HH" },
-      { survey: "MSNA-2025", site: "Lutsk", code: "hotspots", label: "Hotspots", value: "markets, water points" },
-    ],
-  },
-];
-
-function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function StarRating({ value, onChange, disabled = false }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <button key={i} onClick={() => onChange(i)} className="p-1" title={`${i} star${i > 1 ? "s" : ""}`}>
+        <button
+          key={i}
+          onClick={() => !disabled && onChange(i)}
+          className={`p-1 ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+          title={`${i} star${i > 1 ? "s" : ""}`}
+        >
           <Star className={i <= value ? "fill-current text-yellow-500" : "text-muted-foreground"} />
         </button>
       ))}
@@ -225,14 +62,46 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
+function RatingRow({ label, value, onChange, disabled }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Label className="text-xs text-muted-foreground w-24">{label}</Label>
+      <StarRating value={value} onChange={onChange} disabled={!!disabled} />
+    </div>
+  );
+}
+
+// ---------------------------------------------
+// Charts
+// ---------------------------------------------
 function ChartBlock({ section }: { section: Section }) {
   if (section.chart === "bar") {
     return (
       <div className="h-64 w-full">
         <ResponsiveContainer>
-          <BarChart data={section.chartData}>
-            <XAxis dataKey="category" />
-            <YAxis />
+          <BarChart data={section.chartData} margin={{ top: 28, right: 16, bottom: 28, left: 8 }}>
+            {/* Title inside the chart area */}
+            {section.chartTitle ? (
+              <text
+                x="50%"
+                y={16}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="currentColor"
+                style={{ fontSize: 12, fontWeight: 600 }}
+              >
+                {section.chartTitle}
+              </text>
+            ) : null}
+
+            <XAxis dataKey="category">
+              {section.xLabel ? <RLabel value={section.xLabel} position="insideBottom" offset={-10} /> : null}
+            </XAxis>
+            <YAxis>
+              {section.yLabel ? (
+                <RLabel value={section.yLabel} angle={-90} position="insideLeft" offset={10} />
+              ) : null}
+            </YAxis>
             <Tooltip />
             <Bar dataKey="value" radius={[8, 8, 0, 0]} />
           </BarChart>
@@ -240,11 +109,24 @@ function ChartBlock({ section }: { section: Section }) {
       </div>
     );
   }
+
   if (section.chart === "pie") {
     return (
       <div className="h-64 w-full">
         <ResponsiveContainer>
-          <PieChart>
+          <PieChart margin={{ top: 28, right: 16, bottom: 16, left: 16 }}>
+            {section.chartTitle ? (
+              <text
+                x="50%"
+                y={16}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="currentColor"
+                style={{ fontSize: 12, fontWeight: 600 }}
+              >
+                {section.chartTitle}
+              </text>
+            ) : null}
             <Pie dataKey="value" data={section.chartData} outerRadius={100} label>
               {section.chartData.map((_, index) => (
                 <Cell key={`cell-${index}`} />
@@ -256,15 +138,14 @@ function ChartBlock({ section }: { section: Section }) {
       </div>
     );
   }
-  return (
-    <div className="h-24 grid place-items-center text-sm text-muted-foreground">
-      <div className="flex items-center gap-2">
-        <BarChart3 className="h-4 w-4" /> No chart for this section.
-      </div>
-    </div>
-  );
+
+  return null;
 }
 
+
+// ---------------------------------------------
+// Helpers
+// ---------------------------------------------
 function getQuestionnaireId(rows: ContextRow[]): string {
   if (!rows || !rows.length) return "";
   const counts = rows.reduce<Record<string, number>>((acc, r) => {
@@ -321,6 +202,9 @@ function WeightBar({ value }: { value: number }) {
   );
 }
 
+// ---------------------------------------------
+// ODK Context
+// ---------------------------------------------
 function OdkContext({
   rows,
   focusCodes = [],
@@ -486,7 +370,7 @@ function OdkContext({
           <DialogHeader>
             <DialogTitle>ODK Context — Full View</DialogTitle>
           </DialogHeader>
-          <TableView maxHeight="70vh" />
+        <TableView maxHeight="70vh" />
           <DialogFooter>
             <Button variant="secondary" onClick={() => setExpanded(false)}>
               Close
@@ -498,6 +382,9 @@ function OdkContext({
   );
 }
 
+// ---------------------------------------------
+// Editor widgets
+// ---------------------------------------------
 function SuggestionListEditor({ items, onChange }: { items: string[]; onChange: (items: string[]) => void }) {
   const [draft, setDraft] = useState("");
   function updateItem(i: number, val: string) {
@@ -538,6 +425,9 @@ function SuggestionListEditor({ items, onChange }: { items: string[]; onChange: 
   );
 }
 
+// ---------------------------------------------
+// Sidebar
+// ---------------------------------------------
 function SectionSidebar({
   sections,
   activeId,
@@ -560,26 +450,27 @@ function SectionSidebar({
             <Badge variant="secondary">{s.cluster}</Badge>
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <StarRating value={s.rating} onChange={() => {}} />
+            <div className="flex items-center gap-1">
+              <Star className={s.rating > 0 ? "fill-current text-yellow-500" : "text-muted-foreground"} />
+              <span>{s.rating || "—"}</span>
             </div>
             <div className="flex items-center gap-2">
               {s.accepted ? (
                 <span className="inline-flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> 
+                  <CheckCircle2 className="h-4 w-4" />
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <Edit3 className="h-4 w-4" /> 
+                  <Edit3 className="h-4 w-4" />
                 </span>
               )}
               {s.hasRecs && (s.acceptRecs ? (
                 <span className="inline-flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> 
+                  <CheckCircle2 className="h-4 w-4" />
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <ListChecks className="h-4 w-4" /> 
+                  <ListChecks className="h-4 w-4" />
                 </span>
               ))}
             </div>
@@ -590,7 +481,7 @@ function SectionSidebar({
   );
 }
 
-// ---------- Helpers to build JSONL safely ----------
+// ---------- JSONL helpers ----------
 function buildFieldWeightMap(fields: string[], rows: ContextRow[]): Record<string, number> {
   const base = computeBaseWeights(fields);
   const counts = countByCode(rows);
@@ -616,6 +507,7 @@ function buildNarrativeRow(s: Section) {
     ai_text: s.aiText,
     human_text: s.humanText || "",
     rating: s.rating || null,
+    rating_dimensions: s.ratings, // per-dimension
     accepted: !!s.accepted,
     final_text,
     context_rows: s.contextRows,
@@ -656,16 +548,16 @@ function buildJSONLLines(sections: Section[]) {
   return lines;
 }
 
+// ---------------------------------------------
+// Main App
+// ---------------------------------------------
 export default function DemoReviewerApp() {
   const [sections, setSections] = useState<Section[]>(initialSections);
   const [activeId, setActiveId] = useState<string>(initialSections[0].id);
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [role, setRole] = useState<"reviewer" | "user">("user");
 
-  const active = useMemo(() => {
-    const found = sections.find((s) => s.id === activeId);
-    return found || sections[0];
-  }, [sections, activeId]);
+  const active = useMemo(() => sections.find((s) => s.id === activeId) || sections[0], [sections, activeId]);
 
   const reviewedCount = useMemo(
     () =>
@@ -683,6 +575,18 @@ export default function DemoReviewerApp() {
 
   function updateSection(id: string, patch: Partial<Section>) {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+
+  // Set a rating dimension & compute overall as average (1 decimal)
+  function setRatingDim(id: string, dim: keyof RatingsDims, value: number) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        const dims = { ...s.ratings, [dim]: value } as RatingsDims;
+        const avg = (dims.helpfulness + dims.honesty + dims.harmlessness) / 3;
+        return { ...s, ratings: dims, rating: Math.round(avg * 10) / 10 };
+      })
+    );
   }
 
   function exportJSONL() {
@@ -706,7 +610,7 @@ export default function DemoReviewerApp() {
       const parsed = lines.map((l, i) => {
         try {
           return JSON.parse(l);
-        } catch (e) {
+        } catch {
           throw new Error(`Line ${i + 1} is not valid JSON.`);
         }
       });
@@ -716,9 +620,7 @@ export default function DemoReviewerApp() {
         if (!row.questionnaire_id) throw new Error("Missing questionnaire_id.");
         if (!row.field_weights || typeof row.field_weights !== "object") throw new Error("Missing field_weights map.");
         const fieldWeights = row.field_weights as Record<string, number>;
-        const sum: number = Object.values(fieldWeights as Record<string, number>)
-          .map((n: unknown) => Number(n))
-          .reduce((a: number, b: number) => a + b, 0);
+        const sum: number = Object.values(fieldWeights).map((n) => Number(n)).reduce((a, b) => a + b, 0);
         const sourceCodes = (row.source_field_codes ?? []) as unknown[];
         if (sourceCodes.length && !(sum > 0.95 && sum <= 1.0001)) {
           throw new Error("Field weights should sum to ~1 across referenced codes.");
@@ -727,7 +629,6 @@ export default function DemoReviewerApp() {
           if (typeof row.completion !== "string" || !row.completion.includes("\n")) {
             throw new Error("Recommendations completion should be a bullet list separated by newlines.");
           }
-          // New test: number of bullets should equal number of final suggestions
           const bullets = row.completion.split("\n").filter((ln: string) => ln.trim().startsWith("- "));
           if (bullets.length !== row.final_suggestions.length) {
             throw new Error("Mismatch between suggestions and completion bullets.");
@@ -746,11 +647,6 @@ export default function DemoReviewerApp() {
       const overviewRec = parsed.find((r: any) => r.type === "recommendations" && r.section_id === "overview");
       if (overviewRec) throw new Error("Overview must not produce recommendations row.");
 
-      const anyRec = parsed.find((r: any) => r.type === "recommendations" && r.final_suggestions && r.final_suggestions.length);
-      if (anyRec && !anyRec.completion.trim().startsWith("- ")) {
-        throw new Error("Recommendations completion should start with '- '.");
-      }
-
       if (lines.length > 1) {
         const joined = lines.join("\n");
         const split = joined.split("\n");
@@ -763,6 +659,7 @@ export default function DemoReviewerApp() {
     }
   }
 
+  // Derived
   const focusCodes = useMemo(() => {
     const set = new Set([...(active.narrativeFields || []), ...(active.recFields || [])]);
     return Array.from(set);
@@ -771,6 +668,9 @@ export default function DemoReviewerApp() {
   const questionnaireId = useMemo(() => getQuestionnaireId(active.contextRows), [active]);
   const finalNarrative = active.accepted && active.humanText.trim() ? active.humanText : active.aiText;
   const finalRecs = active.hasRecs && active.acceptRecs && active.humanRecs.length ? active.humanRecs : active.aiRecs;
+
+  const hasChart = active.chart !== "none";
+  const MAP_PLACEHOLDER_SRC = "https://healthcluster.who.int/images/librariesprovider16/health-cluster/countries/ukraine/ukraine-map-2016.tmb-1920v.png?Culture=en&sfvrsn=22d7b80f_5"; // <— replace with your static image path
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -810,7 +710,7 @@ export default function DemoReviewerApp() {
                   <Download className="mr-2 h-4 w-4" /> Export JSONL
                 </Button>
                 <Button variant="outline" onClick={runSelfTests} title="Run basic runtime tests">
-                  <TestTube2 className="mr-2 h-4 w-4" /> Self‑tests
+                  <TestTube2 className="mr-2 h-4 w-4" /> Self-tests
                 </Button>
               </>
             )}
@@ -843,57 +743,82 @@ export default function DemoReviewerApp() {
                 <Badge variant="secondary">Questionnaire: {questionnaireId || "—"}</Badge>
                 <Separator orientation="vertical" className="h-6" />
                 <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Rating</Label>
-                  <StarRating value={active.rating} onChange={(v) => updateSection(active.id, { rating: v })} />
+                  <Label className="text-xs text-muted-foreground">Overall (avg)</Label>
+                  <StarRating value={active.rating} onChange={() => {}} disabled />
+                  <span className="text-xs text-muted-foreground">{active.rating.toFixed(1)}</span>
                 </div>
-                {role === "reviewer" && (
-                  <>
-                    <Separator orientation="vertical" className="h-6" />
-                    <div className="flex items-center gap-2">
-                      <Checkbox id="accept" checked={active.accepted} onCheckedChange={(v) => updateSection(active.id, { accepted: !!v })} />
-                      <Label htmlFor="accept" className="text-sm">Adopt my narrative as final</Label>
-                    </div>
-                  </>
-                )}
               </div>
             </CardHeader>
+
             <CardContent className="space-y-4">
-              {/* ODK context & chart */}
-              {role === "reviewer" ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Reviewer scoring controls */}
+              {role === "reviewer" && (
+                <div className="rounded-lg border p-3">
+                  <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Reviewer Scoring</div>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <RatingRow label="Helpfulness" value={active.ratings.helpfulness} onChange={(v) => setRatingDim(active.id, 'helpfulness', v)} />
+                    <RatingRow label="Honesty" value={active.ratings.honesty} onChange={(v) => setRatingDim(active.id, 'honesty', v)} />
+                    <RatingRow label="Harmlessness" value={active.ratings.harmlessness} onChange={(v) => setRatingDim(active.id, 'harmlessness', v)} />
+                    <Separator orientation="vertical" className="h-6 hidden md:block" />
+                    <div className="text-xs text-muted-foreground">
+                      Overall auto-avg: <span className="font-medium">{active.rating.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ODK Context (reviewer only), its own row, ABOVE visualization row */}
+              {role === "reviewer" && (
+                <div className="grid grid-cols-1 gap-4">
                   <Card className="col-span-1">
                     <CardHeader>
                       <CardTitle className="text-sm font-medium">ODK Context (multi-survey)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <OdkContext rows={active.contextRows} focusCodes={focusCodes} narrativeFields={active.narrativeFields} recFields={active.recFields} />
-                    </CardContent>
-                  </Card>
-                  <Card className="col-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        {active.chart === "pie" ? <PieChartIcon className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />} Section Chart
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ChartBlock section={active} />
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  <Card className="col-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        {active.chart === "pie" ? <PieChartIcon className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />} Section Chart
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ChartBlock section={active} />
+                      <OdkContext
+                        rows={active.contextRows}
+                        focusCodes={focusCodes}
+                        narrativeFields={active.narrativeFields}
+                        recFields={active.recFields}
+                      />
                     </CardContent>
                   </Card>
                 </div>
               )}
+
+              {/* Visualization Row: Chart (if any) + Map placeholder (always) */}
+              <div className={`grid grid-cols-1 ${hasChart ? "lg:grid-cols-2" : ""} gap-4`}>
+                {hasChart && (
+                  <Card className="col-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        {active.chart === "pie" ? <PieChartIcon className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />} Section Chart
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartBlock section={active} />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Map placeholder — always shown */}
+                <Card className="col-span-1">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">Map (placeholder)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border overflow-hidden">
+                      <img
+                        src={MAP_PLACEHOLDER_SRC}
+                        alt="Map placeholder"
+                        className="w-full h-64 object-cover"
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Narrative Editor */}
               {role === "reviewer" ? (
@@ -927,6 +852,11 @@ export default function DemoReviewerApp() {
                     <div className="mt-2 text-xs text-muted-foreground">
                       Final narrative used for export: <span className="font-medium">{active.accepted && active.humanText.trim() ? "Your revision" : "AI draft"}</span>
                     </div>
+                    {/* Narrative adoption control at bottom */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Checkbox id="acceptNarr" checked={active.accepted} onCheckedChange={(v) => updateSection(active.id, { accepted: !!v })} />
+                      <Label htmlFor="acceptNarr" className="text-sm">Adopt my narrative as final</Label>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -946,16 +876,10 @@ export default function DemoReviewerApp() {
               {active.hasRecs && role === "reviewer" && (
                 <div className="grid grid-cols-1 gap-4">
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader>
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <ListChecks className="h-4 w-4" /> Programming Suggestions (Actions)
                       </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="acceptRecs" checked={active.acceptRecs} onCheckedChange={(v) => updateSection(active.id, { acceptRecs: !!v })} />
-                        <Label htmlFor="acceptRecs" className="text-sm">
-                          Adopt my suggestions as final
-                        </Label>
-                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -992,6 +916,13 @@ export default function DemoReviewerApp() {
                         </div>
                       </div>
                     </CardContent>
+                    {/* Suggestions adoption control at bottom */}
+                    <CardFooter>
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="acceptRecs" checked={active.acceptRecs} onCheckedChange={(v) => updateSection(active.id, { acceptRecs: !!v })} />
+                        <Label htmlFor="acceptRecs" className="text-sm">Adopt my suggestions as final</Label>
+                      </div>
+                    </CardFooter>
                   </Card>
                 </div>
               )}
@@ -1019,13 +950,12 @@ export default function DemoReviewerApp() {
                 </div>
               )}
             </CardContent>
+
             <CardFooter className="flex items-center justify-between">
               <div className="text-xs text-muted-foreground">
                 Section status — Narrative: <span className="font-medium">{active.accepted && active.humanText.trim() ? "Edited" : "AI"}</span>
                 {active.hasRecs && (
-                  <>
-                    {" "}· Suggestions: <span className="font-medium">{active.acceptRecs && active.humanRecs.length ? "Edited" : "AI"}</span>
-                  </>
+                  <> · Suggestions: <span className="font-medium">{active.acceptRecs && active.humanRecs.length ? "Edited" : "AI"}</span></>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -1034,47 +964,6 @@ export default function DemoReviewerApp() {
                 </motion.div>
               </div>
             </CardFooter>
-          </Card>
-
-          {/* All-sections view */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Report Outline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {sections.map((s) => {
-                  const finalText = s.accepted && s.humanText.trim() ? s.humanText : s.aiText;
-                  const finalRecsLocal = s.hasRecs && s.acceptRecs && s.humanRecs.length ? s.humanRecs : s.aiRecs;
-                  return (
-                    <div key={s.id} className="rounded-xl border p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold text-sm">{s.title}</div>
-                        <Badge variant="outline">{s.cluster}</Badge>
-                      </div>
-                      <div className="line-clamp-4 text-sm text-muted-foreground">{finalText}</div>
-                      {s.hasRecs && (
-                        <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                          {(finalRecsLocal || []).slice(0, 3).map((r, i) => (
-                            <li key={i}>{r}</li>
-                          ))}
-                          {finalRecsLocal && finalRecsLocal.length > 3 && <li>…</li>}
-                        </ul>
-                      )}
-                      <div className="mt-3 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1">
-                          <Star className={s.rating > 0 ? "fill-current text-yellow-500" : "text-muted-foreground"} />
-                          <span>{s.rating || "—"}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => setActiveId(s.id)}>
-                          Open
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
           </Card>
         </section>
       </main>
